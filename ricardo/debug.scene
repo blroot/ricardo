@@ -1,9 +1,25 @@
 mode 1280 720
-vertex 0 0 0
-vertex 0 1 0
-vertex 0 0 1
-scale 1 1 1
-translate 0 0 1
-pushTransform
-tri 0 1 2
-popTransform
+vertex -1.0 1.0 -1.0
+vertex 1.0 1.0 -1.0
+vertex 1.0 1.0 1.0
+vertex -1.0 1.0 1.0
+vertex -1.0 -1.0 -1.0
+vertex 1.0 -1.0 -1.0
+vertex 1.0 -1.0 1.0
+vertex -1.0 -1.0 1.0
+#scale 1 1 1
+#translate 0 0 1
+#pushTransform
+tri 3 1 0
+tri 2 1 3
+tri 0 5 4
+tri 1 5 0
+tri 3 4 7
+tri 0 4 3
+tri 1 6 5
+tri 2 6 1
+tri 2 7 6
+tri 3 7 2
+tri 6 4 5
+tri 7 4 6
+#popTransform

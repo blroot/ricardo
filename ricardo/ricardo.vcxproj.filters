@@ -31,6 +31,12 @@
     <Filter Include="Source Files\Renderer">
       <UniqueIdentifier>{d32b4459-a01e-4904-8d46-2c6b5df73e9d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Shaders">
+      <UniqueIdentifier>{41fa3254-3b95-492b-8155-c42aa1c27416}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Shaders\HLSL">
+      <UniqueIdentifier>{cdb7b4d2-976c-4274-b69b-7f7e01a10805}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -106,5 +112,10 @@
     <Text Include="debug.scene">
       <Filter>scenes</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="BasicShaders.hlsl">
+      <Filter>Source Files\Shaders\HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

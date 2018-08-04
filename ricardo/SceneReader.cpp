@@ -63,7 +63,8 @@ ricardo::Scene ricardo::SceneReader::read()
 					if (valid_input) {
 
 						vec3 vertex = vec3(values[0], values[1], values[2]);
-						this->vertex_buffer.push_back(vertex);
+						//this->vertex_buffer.push_back(vertex);
+						scene.addVertex(vertex, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 						std::cout << "Adding vertex to buffer with coordinates: " << vertex << std::endl;
 					}
 				} 
@@ -72,7 +73,12 @@ ricardo::Scene ricardo::SceneReader::read()
 
 					if (valid_input) {
 
-						Triangle *triangle = new Triangle(vertex_buffer[values[0]], vertex_buffer[values[1]], vertex_buffer[values[2]]);
+						//Triangle *triangle = new Triangle(vertex_buffer[values[0]], vertex_buffer[values[1]], vertex_buffer[values[2]]);
+						
+						// Pushing indices to Scene index vector
+						scene.addIndex(values[0]);
+						scene.addIndex(values[1]);
+						scene.addIndex(values[2]);
 
 						//triangle->getMaterials().setAmbient(this->ambient);
 						//triangle->getMaterials().setDiffuse(this->diffuse);
@@ -80,11 +86,11 @@ ricardo::Scene ricardo::SceneReader::read()
 						//triangle->getMaterials().setShininess(this->shininess);
 						//triangle->getMaterials().setEmission(this->emission);
 						//triangle->setTransform(transfstack.top());
-						triangle->applyTransform();
-						scene.addObject(triangle);
+						//triangle->applyTransform();
+						//scene.addObject(triangle);
 
-						std::cout << "Adding triangle to scene with vertices: " << vertex_buffer[values[0]]
-							<< " " << vertex_buffer[values[1]] << " " << vertex_buffer[values[2]] << std::endl;
+						//std::cout << "Adding triangle to scene with vertices: " << vertex_buffer[values[0]]
+						//	<< " " << vertex_buffer[values[1]] << " " << vertex_buffer[values[2]] << std::endl;
 						std::cout << "Setting triangle transform:" << transfstack.top() << std::endl;
 						//std::cout << "Setting triangle ambient to: " << this->ambient << std::endl;
 						//std::cout << "Setting triangle diffuse to: " << this->diffuse << std::endl;
