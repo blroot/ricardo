@@ -9,6 +9,16 @@ using namespace DirectX;
 
 namespace ricardo {
 
+#define IDC_TOGGLEFULLSCREEN    1
+#define IDC_TOGGLEREF           3
+#define IDC_CHANGEDEVICE 4
+
+	CDXUTTextHelper* g_pTxtHelper = nullptr;
+	CDXUTDialogResourceManager  g_DialogResourceManager;
+	CD3DSettingsDlg             g_D3DSettingsDlg;
+	CDXUTDialog                 g_HUD;
+	CDXUTDialog                 g_SampleUI;
+
 	struct ShaderTransforms {
 		XMMATRIX World;
 		XMMATRIX View;
@@ -33,12 +43,12 @@ namespace ricardo {
 			//this->scene = nullptr;
 			static_cast<handler*>(this)->reset();
 		};
+		void InitApp() {
+			static_cast<handler*>(this)->InitApp();
+		};
 		void setScene(Scene& scene) {
 			this->scene = scene;
 		}
-		void otro() {
-			std::cout << "OTRO" << std::endl;
-		};
 	};
 
 	class DX11Handler : public Renderer<DX11Handler> {
@@ -50,25 +60,65 @@ namespace ricardo {
 		CComPtr<ID3D11InputLayout> InputLayout;
 		CComPtr<ID3D11VertexShader> BasicVS;
 		CComPtr<ID3D11PixelShader> BasicPS;
-		//std::vector<InfoVertice> figura;
-		//std::vector<WORD> indices;
 		ShaderTransforms transforms;
 		float RotationY = 0.0f;
 		ID3D11Device* pd3dDevice;
 		HRESULT hr;
 
-		//HRESULT LoadSceneAssets();
-		//HRESULT CopySceneAssetsToGPU(_In_ ID3D11Device* pd3dDevice);
-		static HRESULT CALLBACK HandleDeviceCreated(_In_ ID3D11Device* pd3dDevice, _In_ const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, _In_opt_ void* pUserContext) {
+		static HRESULT CALLBACK HandleDeviceCreated(_In_ ID3D11Device* pd3dDevice, 
+			_In_ const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, _In_opt_ void* pUserContext) {
+
 			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
-			//DX11Handler *pRender = &g_RenderData;
 			HRESULT hr = S_OK;
 			pRender->reset();
 			V_RETURN(pRender->initialize(pd3dDevice));
+
+			auto pd3dImmediateContext = DXUTGetD3D11DeviceContext();
+			V_RETURN(g_DialogResourceManager.OnD3D11CreateDevice(pd3dDevice, pd3dImmediateContext));
+			V_RETURN(g_D3DSettingsDlg.OnD3D11CreateDevice(pd3dDevice));
+			g_pTxtHelper = new CDXUTTextHelper(pd3dDevice, pd3dImmediateContext, &g_DialogResourceManager, 15);
+
 			return hr;
 		};
 
-		static void CALLBACK HandleFrameRender(_In_ ID3D11Device* pd3dDevice, _In_ ID3D11DeviceContext* pd3dImmediateContext, _In_ double fTime, _In_ float fElapsedTime, _In_opt_ void* pUserContext) {
+		static void RenderText()
+		{
+			UINT nBackBufferHeight = DXUTGetDXGIBackBufferSurfaceDesc()->Height;
+
+			g_pTxtHelper->Begin();
+			g_pTxtHelper->SetInsertionPos(2, 0);
+			g_pTxtHelper->SetForegroundColor(Colors::Yellow);
+			g_pTxtHelper->DrawTextLine(DXUTGetFrameStats(DXUTIsVsyncEnabled()));
+			g_pTxtHelper->DrawTextLine(DXUTGetDeviceStats());
+			g_pTxtHelper->End();
+		}
+
+		static HRESULT CALLBACK HandleResizedSwapChain(_In_ ID3D11Device* pd3dDevice, _In_ IDXGISwapChain* pSwapChain,
+			_In_ const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, _In_opt_ void* pUserContext) {
+
+			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
+			HRESULT hr;
+
+			V_RETURN(g_DialogResourceManager.OnD3D11ResizedSwapChain(pd3dDevice, pBackBufferSurfaceDesc));
+			V_RETURN(g_D3DSettingsDlg.OnD3D11ResizedSwapChain(pd3dDevice, pBackBufferSurfaceDesc));
+
+			// Setup the camera's projection parameters
+			//float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
+			//g_Camera.SetProjParams(XM_PI / 4, fAspectRatio, 2.0f, 4000.0f);
+			//g_Camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
+			//g_Camera.SetButtonMasks(MOUSE_MIDDLE_BUTTON, MOUSE_WHEEL, MOUSE_LEFT_BUTTON);
+
+			g_HUD.SetLocation(pBackBufferSurfaceDesc->Width - 170, 0);
+			g_HUD.SetSize(170, 170);
+			g_SampleUI.SetLocation(pBackBufferSurfaceDesc->Width - 170, pBackBufferSurfaceDesc->Height - 300);
+			g_SampleUI.SetSize(170, 300);
+
+			return S_OK;
+		}
+
+		static void CALLBACK HandleFrameRender(_In_ ID3D11Device* pd3dDevice, _In_ ID3D11DeviceContext* pd3dImmediateContext, 
+			_In_ double fTime, _In_ float fElapsedTime, _In_opt_ void* pUserContext) {
+
 			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
 			ID3D11RenderTargetView *rtv = DXUTGetD3D11RenderTargetView();
 
@@ -104,8 +154,35 @@ namespace ricardo {
 			pd3dImmediateContext->PSSetShader(pRender->BasicPS, nullptr, 0);
 			pd3dImmediateContext->OMSetRenderTargets(1, rtvViews, nullptr);
 			pd3dImmediateContext->DrawIndexed(pRender->scene.indices.size(), 0, 0);
-		}
+
+			DXUT_BeginPerfEvent(DXUT_PERFEVENTCOLOR, L"HUD / Stats");
+			g_HUD.OnRender(fElapsedTime);
+			g_SampleUI.OnRender(fElapsedTime);
+			RenderText();
+			DXUT_EndPerfEvent();
+		};
+
+		static void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, void* pUserContext) {
+			switch (nControlID) {
+			case IDC_TOGGLEFULLSCREEN:
+				DXUTToggleFullScreen(); break;
+			}
+
+		};
+
 	private:
+		void InitApp() {
+			g_D3DSettingsDlg.Init(&g_DialogResourceManager);
+			g_HUD.Init(&g_DialogResourceManager);
+			g_SampleUI.Init(&g_DialogResourceManager);
+
+			g_HUD.SetCallback(OnGUIEvent);
+			int iY = 30;
+			int iYo = 26;
+			g_HUD.AddButton(IDC_TOGGLEFULLSCREEN, L"Toggle full screen", 0, iY, 170, 23);
+			g_SampleUI.SetCallback(OnGUIEvent); iY = 10;
+		};
+
 		void reset() {
 			RotationY = 0.0f;
 			CBuffer = nullptr;
