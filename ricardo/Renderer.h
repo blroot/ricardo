@@ -18,6 +18,8 @@ namespace ricardo {
 	CD3DSettingsDlg             g_D3DSettingsDlg;
 	CDXUTDialog                 g_HUD;
 	CDXUTDialog                 g_SampleUI;
+	CModelViewerCamera          g_Camera;
+	XMMATRIX                    g_mCenterMesh;
 
 	struct ShaderTransforms {
 		XMMATRIX World;
@@ -65,6 +67,17 @@ namespace ricardo {
 		ID3D11Device* pd3dDevice;
 		HRESULT hr;
 
+		static void CALLBACK HandleFrameMove(double fTime, float fElapsedTime, void* pUserContext)
+		{
+			// Update the camera's position based on user input 
+			g_Camera.FrameMove(fElapsedTime);
+		};
+
+		static bool CALLBACK HandleDeviceAcceptable(const CD3D11EnumAdapterInfo *AdapterInfo, UINT Output, const CD3D11EnumDeviceInfo *DeviceInfo,
+			DXGI_FORMAT BackBufferFormat, bool bWindowed, void* pUserContext) {
+			return true;
+		};
+
 		static HRESULT CALLBACK HandleDeviceCreated(_In_ ID3D11Device* pd3dDevice, 
 			_In_ const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, _In_opt_ void* pUserContext) {
 
@@ -73,10 +86,24 @@ namespace ricardo {
 			pRender->reset();
 			V_RETURN(pRender->initialize(pd3dDevice));
 
+			XMFLOAT3 vCenter(0.25767413f, -28.503521f, 111.00689f);
+			FLOAT fObjectRadius = 378.15607f;
+
+			g_mCenterMesh = XMMatrixTranslation(-vCenter.x, -vCenter.y, -vCenter.z);
+			XMMATRIX m = XMMatrixRotationY(XM_PI);
+			g_mCenterMesh *= m;
+			m = XMMatrixRotationX(XM_PI / 2.0f);
+			g_mCenterMesh *= m;
+
 			auto pd3dImmediateContext = DXUTGetD3D11DeviceContext();
 			V_RETURN(g_DialogResourceManager.OnD3D11CreateDevice(pd3dDevice, pd3dImmediateContext));
 			V_RETURN(g_D3DSettingsDlg.OnD3D11CreateDevice(pd3dDevice));
 			g_pTxtHelper = new CDXUTTextHelper(pd3dDevice, pd3dImmediateContext, &g_DialogResourceManager, 15);
+
+			// Setup the camera's view parameters
+			static const XMVECTORF32 s_vecEye = { 0.0f, 0.0f, -100.0f, 0.0f };
+			g_Camera.SetViewParams(s_vecEye, g_XMZero);
+			g_Camera.SetRadius(378.15607f * 3.0f, 378.15607f * 0.5f, 378.15607f * 10.0f);
 
 			return hr;
 		};
@@ -91,7 +118,7 @@ namespace ricardo {
 			g_pTxtHelper->DrawTextLine(DXUTGetFrameStats(DXUTIsVsyncEnabled()));
 			g_pTxtHelper->DrawTextLine(DXUTGetDeviceStats());
 			g_pTxtHelper->End();
-		}
+		};
 
 		static HRESULT CALLBACK HandleResizedSwapChain(_In_ ID3D11Device* pd3dDevice, _In_ IDXGISwapChain* pSwapChain,
 			_In_ const DXGI_SURFACE_DESC* pBackBufferSurfaceDesc, _In_opt_ void* pUserContext) {
@@ -103,10 +130,10 @@ namespace ricardo {
 			V_RETURN(g_D3DSettingsDlg.OnD3D11ResizedSwapChain(pd3dDevice, pBackBufferSurfaceDesc));
 
 			// Setup the camera's projection parameters
-			//float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
-			//g_Camera.SetProjParams(XM_PI / 4, fAspectRatio, 2.0f, 4000.0f);
-			//g_Camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
-			//g_Camera.SetButtonMasks(MOUSE_MIDDLE_BUTTON, MOUSE_WHEEL, MOUSE_LEFT_BUTTON);
+			float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
+			g_Camera.SetProjParams(XM_PI / 4, fAspectRatio, 2.0f, 4000.0f);
+			g_Camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
+			g_Camera.SetButtonMasks(MOUSE_MIDDLE_BUTTON, MOUSE_WHEEL, MOUSE_LEFT_BUTTON);
 
 			g_HUD.SetLocation(pBackBufferSurfaceDesc->Width - 170, 0);
 			g_HUD.SetSize(170, 170);
@@ -114,7 +141,7 @@ namespace ricardo {
 			g_SampleUI.SetSize(170, 300);
 
 			return S_OK;
-		}
+		};
 
 		static void CALLBACK HandleFrameRender(_In_ ID3D11Device* pd3dDevice, _In_ ID3D11DeviceContext* pd3dImmediateContext, 
 			_In_ double fTime, _In_ float fElapsedTime, _In_opt_ void* pUserContext) {
@@ -124,14 +151,15 @@ namespace ricardo {
 
 			pd3dImmediateContext->ClearRenderTargetView(rtv, DirectX::Colors::DarkSlateBlue);
 
+			// Get the projection & view matrix from the camera class
+			pRender->transforms.Projection = g_Camera.GetProjMatrix();
+			pRender->transforms.View = g_Camera.GetViewMatrix();
+
+			// Set the per object constant data
+			pRender->transforms.World = g_mCenterMesh * g_Camera.GetWorldMatrix();
+
 			RECT r = DXUTGetWindowClientRect();
 			pRender->RotationY = (float)DXUTGetTime();
-			pRender->transforms.World = XMMatrixRotationY(pRender->RotationY);
-			XMVECTOR Eye = XMVectorSet(0.0f, 1.0f, -5.0f, 0.0f);
-			XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-			XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-			pRender->transforms.View = XMMatrixLookAtLH(Eye, At, Up);
-			pRender->transforms.Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, r.right / (FLOAT)r.bottom, 0.01f, 100.0f);
 
 			// Las matrices en constant buffers vienen column-major, por convencion.
 			pRender->transforms.World = XMMatrixTranspose(pRender->transforms.World);
@@ -162,7 +190,7 @@ namespace ricardo {
 			DXUT_EndPerfEvent();
 		};
 
-		static void CALLBACK OnGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, void* pUserContext) {
+		static void CALLBACK HandleGUIEvent(UINT nEvent, int nControlID, CDXUTControl* pControl, void* pUserContext) {
 			switch (nControlID) {
 			case IDC_TOGGLEFULLSCREEN:
 				DXUTToggleFullScreen(); break;
@@ -170,17 +198,47 @@ namespace ricardo {
 
 		};
 
+		static LRESULT CALLBACK HandleMsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool* pbNoFurtherProcessing,
+			void* pUserContext) {
+			// Pass messages to dialog resource manager calls so GUI state is updated correctly
+			//*pbNoFurtherProcessing = g_DialogResourceManager.MsgProc(hWnd, uMsg, wParam, lParam);
+			//if (*pbNoFurtherProcessing)
+			//	return 0;
+
+			// Pass messages to settings dialog if its active
+			//if (g_D3DSettingsDlg.IsActive())
+			//{
+			//	g_D3DSettingsDlg.MsgProc(hWnd, uMsg, wParam, lParam);
+			//	return 0;
+			//}
+
+			// Give the dialogs a chance to handle the message first
+			//*pbNoFurtherProcessing = g_HUD.MsgProc(hWnd, uMsg, wParam, lParam);
+			//if (*pbNoFurtherProcessing)
+			//	return 0;
+			//*pbNoFurtherProcessing = g_SampleUI.MsgProc(hWnd, uMsg, wParam, lParam);
+			//if (*pbNoFurtherProcessing)
+			//	return 0;
+
+			//g_LightControl.HandleMessages(hWnd, uMsg, wParam, lParam);
+
+			// Pass all remaining windows messages to camera so it can respond to user input
+			g_Camera.HandleMessages(hWnd, uMsg, wParam, lParam);
+
+			return 0;
+		}
+
 	private:
 		void InitApp() {
 			g_D3DSettingsDlg.Init(&g_DialogResourceManager);
 			g_HUD.Init(&g_DialogResourceManager);
 			g_SampleUI.Init(&g_DialogResourceManager);
 
-			g_HUD.SetCallback(OnGUIEvent);
+			g_HUD.SetCallback(HandleGUIEvent);
 			int iY = 30;
 			int iYo = 26;
 			g_HUD.AddButton(IDC_TOGGLEFULLSCREEN, L"Toggle full screen", 0, iY, 170, 23);
-			g_SampleUI.SetCallback(OnGUIEvent); iY = 10;
+			g_SampleUI.SetCallback(HandleGUIEvent); iY = 10;
 		};
 
 		void reset() {
