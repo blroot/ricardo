@@ -30,6 +30,8 @@ ricardo::Scene ricardo::SceneReader::read()
 		// Initially push identity into transformation stack
 		transfstack.push(mat4(1.0f));
 
+		vec4 current_color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+
 		getline(infile, line);
 
 		while (infile) {
@@ -62,8 +64,8 @@ ricardo::Scene ricardo::SceneReader::read()
 
 					if (valid_input) {
 
-						vec3 vertex = transfstack.top() * vec3(values[0], values[1], values[2]);
-						scene.addVertex(vertex, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+						vec4 vertex = transfstack.top() * vec4(values[0], values[1], values[2], 1.0f);
+						scene.addVertex(vertex, current_color);
 						std::cout << "Adding vertex to buffer with coordinates: " << vertex << std::endl;
 					}
 				} 
@@ -158,6 +160,17 @@ ricardo::Scene ricardo::SceneReader::read()
 						mat4 &top_matrix = transfstack.top();
 						top_matrix = top_matrix * rotation_matrix;
 						std::cout << "Applying transform -> Rotating: axis:" << axis << " angle:" << values[3] << std::endl;
+					}
+
+				}
+				else if (command == "color") {
+
+					valid_input = this->readvals(s, 4, values);
+
+					if (valid_input) {
+
+						current_color = vec4(values[0], values[1], values[2], values[3]);
+						std::cout << "Color -> " << current_color << std::endl;
 					}
 
 				}

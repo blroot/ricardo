@@ -59,7 +59,7 @@ void ricardo::Scene::addIndex(WORD index)
 	this->indices.push_back(index);
 }
 
-void ricardo::Scene::addVertex(vec3 vertex, vec4 color)
+void ricardo::Scene::addVertex(vec4 vertex, vec4 color)
 {
 	InfoVertex arr = { vertex, color };
 	this->vertices.push_back(arr);
