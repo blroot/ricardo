@@ -18,7 +18,7 @@ namespace ricardo {
 	CD3DSettingsDlg             g_D3DSettingsDlg;
 	CDXUTDialog                 g_HUD;
 	CDXUTDialog                 g_SampleUI;
-	CModelViewerCamera          g_Camera;
+	CFirstPersonCamera          g_Camera;
 	XMMATRIX                    g_mCenterMesh;
 
 	struct ShaderTransforms {
@@ -42,7 +42,6 @@ namespace ricardo {
 			return static_cast<handler*>(this)->initialize();
 		};
 		void reset() {
-			//this->scene = nullptr;
 			static_cast<handler*>(this)->reset();
 		};
 		void InitApp() {
@@ -86,15 +85,6 @@ namespace ricardo {
 			pRender->reset();
 			V_RETURN(pRender->initialize(pd3dDevice));
 
-			XMFLOAT3 vCenter(0.25767413f, -28.503521f, 111.00689f);
-			FLOAT fObjectRadius = 378.15607f;
-
-			g_mCenterMesh = XMMatrixTranslation(-vCenter.x, -vCenter.y, -vCenter.z);
-			XMMATRIX m = XMMatrixRotationY(XM_PI);
-			g_mCenterMesh *= m;
-			m = XMMatrixRotationX(XM_PI / 2.0f);
-			g_mCenterMesh *= m;
-
 			auto pd3dImmediateContext = DXUTGetD3D11DeviceContext();
 			V_RETURN(g_DialogResourceManager.OnD3D11CreateDevice(pd3dDevice, pd3dImmediateContext));
 			V_RETURN(g_D3DSettingsDlg.OnD3D11CreateDevice(pd3dDevice));
@@ -103,7 +93,13 @@ namespace ricardo {
 			// Setup the camera's view parameters
 			static const XMVECTORF32 s_vecEye = { 0.0f, 0.0f, -100.0f, 0.0f };
 			g_Camera.SetViewParams(s_vecEye, g_XMZero);
-			g_Camera.SetRadius(378.15607f * 3.0f, 378.15607f * 0.5f, 378.15607f * 10.0f);
+			g_Camera.SetRotateButtons(TRUE, FALSE, FALSE);
+			g_Camera.SetScalers(0.01f, 10.0f);
+			g_Camera.SetDrag(true);
+			g_Camera.SetEnableYAxisMovement(false);
+
+			// We'll use this to set indoor scene boundaries
+			//g_ViewerCamera.SetClipToBoundary(TRUE, &vMin, &vMax);
 
 			return hr;
 		};
@@ -132,8 +128,6 @@ namespace ricardo {
 			// Setup the camera's projection parameters
 			float fAspectRatio = pBackBufferSurfaceDesc->Width / (FLOAT)pBackBufferSurfaceDesc->Height;
 			g_Camera.SetProjParams(XM_PI / 4, fAspectRatio, 2.0f, 4000.0f);
-			g_Camera.SetWindow(pBackBufferSurfaceDesc->Width, pBackBufferSurfaceDesc->Height);
-			g_Camera.SetButtonMasks(MOUSE_MIDDLE_BUTTON, MOUSE_WHEEL, MOUSE_LEFT_BUTTON);
 
 			g_HUD.SetLocation(pBackBufferSurfaceDesc->Width - 170, 0);
 			g_HUD.SetSize(170, 170);
@@ -156,10 +150,10 @@ namespace ricardo {
 			pRender->transforms.View = g_Camera.GetViewMatrix();
 
 			// Set the per object constant data
-			pRender->transforms.World = g_mCenterMesh * g_Camera.GetWorldMatrix();
+			// We don't need World transform - set to identity for now
+			pRender->transforms.World = XMMatrixIdentity();
 
 			RECT r = DXUTGetWindowClientRect();
-			pRender->RotationY = (float)DXUTGetTime();
 
 			// Las matrices en constant buffers vienen column-major, por convencion.
 			pRender->transforms.World = XMMatrixTranspose(pRender->transforms.World);
@@ -200,32 +194,24 @@ namespace ricardo {
 
 		static LRESULT CALLBACK HandleMsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool* pbNoFurtherProcessing,
 			void* pUserContext) {
-			// Pass messages to dialog resource manager calls so GUI state is updated correctly
-			//*pbNoFurtherProcessing = g_DialogResourceManager.MsgProc(hWnd, uMsg, wParam, lParam);
-			//if (*pbNoFurtherProcessing)
-			//	return 0;
 
-			// Pass messages to settings dialog if its active
-			//if (g_D3DSettingsDlg.IsActive())
-			//{
-			//	g_D3DSettingsDlg.MsgProc(hWnd, uMsg, wParam, lParam);
-			//	return 0;
-			//}
-
-			// Give the dialogs a chance to handle the message first
-			//*pbNoFurtherProcessing = g_HUD.MsgProc(hWnd, uMsg, wParam, lParam);
-			//if (*pbNoFurtherProcessing)
-			//	return 0;
-			//*pbNoFurtherProcessing = g_SampleUI.MsgProc(hWnd, uMsg, wParam, lParam);
-			//if (*pbNoFurtherProcessing)
-			//	return 0;
-
-			//g_LightControl.HandleMessages(hWnd, uMsg, wParam, lParam);
-
-			// Pass all remaining windows messages to camera so it can respond to user input
+			// Pass all windows messages to camera so it can respond to user input
 			g_Camera.HandleMessages(hWnd, uMsg, wParam, lParam);
 
 			return 0;
+		};
+
+		static void CALLBACK HandleDestroyDevice(void* pUserContext)
+		{
+			g_DialogResourceManager.OnD3D11DestroyDevice();
+			g_D3DSettingsDlg.OnD3D11DestroyDevice();
+			DXUTGetGlobalResourceCache().OnDestroyDevice();
+			SAFE_DELETE(g_pTxtHelper);
+		};
+
+		static void CALLBACK HandleReleasingSwapChain(void* pUserContext)
+		{
+			g_DialogResourceManager.OnD3D11ReleasingSwapChain();
 		}
 
 	private:
@@ -249,8 +235,6 @@ namespace ricardo {
 			InputLayout = nullptr;
 			BasicVS = nullptr;
 			BasicPS = nullptr;
-			//figura.clear();
-			//indices.clear();
 		};
 
 		HRESULT initialize(_In_ ID3D11Device* pd3dDevice) {
