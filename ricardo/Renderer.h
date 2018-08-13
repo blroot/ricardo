@@ -94,12 +94,15 @@ namespace ricardo {
 			static const XMVECTORF32 s_vecEye = { 0.0f, 0.0f, -100.0f, 0.0f };
 			g_Camera.SetViewParams(s_vecEye, g_XMZero);
 			g_Camera.SetRotateButtons(TRUE, FALSE, FALSE);
-			g_Camera.SetScalers(0.01f, 10.0f);
+			g_Camera.SetScalers(0.01f, 100.0f);
 			g_Camera.SetDrag(true);
 			g_Camera.SetEnableYAxisMovement(false);
 
-			// We'll use this to set indoor scene boundaries
-			//g_ViewerCamera.SetClipToBoundary(TRUE, &vMin, &vMax);
+			XMFLOAT3 vMin = XMFLOAT3(-55.0f, 0.0f, -55.0f);
+			XMFLOAT3 vMax = XMFLOAT3(55.0f, 0.0f, 55.0f);
+
+			// Set indoor scene boundaries - TODO: make configurable
+			g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);
 
 			return hr;
 		};
@@ -255,9 +258,10 @@ namespace ricardo {
 
 			// LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
 			// UINT AlignedByteOffset; D3D11_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
-			D3D11_INPUT_ELEMENT_DESC inputElementDescs[2] = {
+			D3D11_INPUT_ELEMENT_DESC inputElementDescs[3] = {
 				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			    { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 			};
 			V_RETURN(pd3dDevice->CreateInputLayout(inputElementDescs, _countof(inputElementDescs), g_vs_main, sizeof(g_vs_main), &InputLayout));
 			V_RETURN(pd3dDevice->CreateVertexShader(g_vs_main, sizeof(g_vs_main), nullptr, &BasicVS));

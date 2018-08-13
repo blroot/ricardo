@@ -183,11 +183,12 @@
     <Text Include="debug.scene" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="BasicShaders.hlsl">
+    <None Include="BasicShaders.hlsl">
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">g_vs_main</VariableName>
       <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">BasicShaders.h</HeaderFileOutput>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </FxCompile>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

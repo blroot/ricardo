@@ -8,7 +8,7 @@ namespace ricardo {
 	enum graphics_apis { DirectX11, };
 
 	struct InfoVertex {
-		vec4 Pos;
+		vec3 Pos;
 		vec4 Color;
 	};
 
@@ -25,7 +25,7 @@ namespace ricardo {
 			std::vector<WORD> getIndices();
 			std::vector<InfoVertex> getVertices();
 			void addIndex(WORD index);
-			void addVertex(vec4 vertex, vec4 color);
+			void addVertex(vec3 vertex, vec4 color);
 			std::vector<WORD> indices;
 			std::vector<InfoVertex> vertices;
 		private:

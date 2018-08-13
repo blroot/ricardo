@@ -64,7 +64,7 @@ ricardo::Scene ricardo::SceneReader::read()
 
 					if (valid_input) {
 
-						vec4 vertex = transfstack.top() * vec4(values[0], values[1], values[2], 1.0f);
+						vec3 vertex = transfstack.top() * vec4(values[0], values[1], values[2], 1.0f);
 						scene.addVertex(vertex, current_color);
 						std::cout << "Adding vertex to buffer with coordinates: " << vertex << std::endl;
 					}
