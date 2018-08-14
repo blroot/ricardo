@@ -2,8 +2,8 @@
 
 #include "Scene.h"
 #include <iostream>
-#include "BasicShaders.ps.h"
-#include "BasicShaders.vs.h"
+#include "VertexShader.h"
+#include "PixelShader.h"
 
 using namespace DirectX;
 
@@ -20,6 +20,7 @@ namespace ricardo {
 	CDXUTDialog                 g_SampleUI;
 	CFirstPersonCamera          g_Camera;
 	XMMATRIX                    g_mCenterMesh;
+	CDXUTSDKMesh                g_Mesh11;
 
 	struct ShaderTransforms {
 		XMMATRIX World;
@@ -85,6 +86,9 @@ namespace ricardo {
 			pRender->reset();
 			V_RETURN(pRender->initialize(pd3dDevice));
 
+			// Load the mesh
+			V_RETURN(g_Mesh11.Create(pd3dDevice, L"tiny\\tiny.sdkmesh"));
+
 			auto pd3dImmediateContext = DXUTGetD3D11DeviceContext();
 			V_RETURN(g_DialogResourceManager.OnD3D11CreateDevice(pd3dDevice, pd3dImmediateContext));
 			V_RETURN(g_D3DSettingsDlg.OnD3D11CreateDevice(pd3dDevice));
@@ -98,11 +102,11 @@ namespace ricardo {
 			g_Camera.SetDrag(true);
 			g_Camera.SetEnableYAxisMovement(false);
 
-			XMFLOAT3 vMin = XMFLOAT3(-55.0f, 0.0f, -55.0f);
-			XMFLOAT3 vMax = XMFLOAT3(55.0f, 0.0f, 55.0f);
+			//XMFLOAT3 vMin = XMFLOAT3(-55.0f, 0.0f, -55.0f);
+			//XMFLOAT3 vMax = XMFLOAT3(55.0f, 0.0f, 55.0f);
 
 			// Set indoor scene boundaries - TODO: make configurable
-			g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);
+			//g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);
 
 			return hr;
 		};
@@ -180,6 +184,33 @@ namespace ricardo {
 			pd3dImmediateContext->OMSetRenderTargets(1, rtvViews, nullptr);
 			pd3dImmediateContext->DrawIndexed(pRender->scene.indices.size(), 0, 0);
 
+			//Get the mesh
+			//IA setup
+			pd3dImmediateContext->IASetInputLayout(pRender->InputLayout);
+			UINT Strides[1];
+			UINT Offsets[1];
+			ID3D11Buffer* pVB[1];
+			pVB[0] = g_Mesh11.GetVB11(0, 0);
+			Strides[0] = (UINT)g_Mesh11.GetVertexStride(0, 0);
+			Offsets[0] = 0;
+			pd3dImmediateContext->IASetVertexBuffers(0, 1, pVB, Strides, Offsets);
+			pd3dImmediateContext->IASetIndexBuffer(g_Mesh11.GetIB11(0), g_Mesh11.GetIBFormat11(0), 0);
+
+			for (UINT subset = 0; subset < g_Mesh11.GetNumSubsets(0); ++subset)
+			{
+				// Get the subset
+				auto pSubset = g_Mesh11.GetSubset(0, subset);
+
+				auto PrimType = CDXUTSDKMesh::GetPrimitiveType11((SDKMESH_PRIMITIVE_TYPE)pSubset->PrimitiveType);
+				pd3dImmediateContext->IASetPrimitiveTopology(PrimType);
+
+				// Ignores most of the material information in them mesh to use only a simple shader
+				auto pDiffuseRV = g_Mesh11.GetMaterial(pSubset->MaterialID)->pDiffuseRV11;
+				pd3dImmediateContext->PSSetShaderResources(0, 1, &pDiffuseRV);
+
+				pd3dImmediateContext->DrawIndexed((UINT)pSubset->IndexCount, 0, (UINT)pSubset->VertexStart);
+			}
+
 			DXUT_BeginPerfEvent(DXUT_PERFEVENTCOLOR, L"HUD / Stats");
 			g_HUD.OnRender(fElapsedTime);
 			g_SampleUI.OnRender(fElapsedTime);
@@ -206,6 +237,7 @@ namespace ricardo {
 
 		static void CALLBACK HandleDestroyDevice(void* pUserContext)
 		{
+			g_Mesh11.Destroy();
 			g_DialogResourceManager.OnD3D11DestroyDevice();
 			g_D3DSettingsDlg.OnD3D11DestroyDevice();
 			DXUTGetGlobalResourceCache().OnDestroyDevice();
@@ -258,10 +290,11 @@ namespace ricardo {
 
 			// LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
 			// UINT AlignedByteOffset; D3D11_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
-			D3D11_INPUT_ELEMENT_DESC inputElementDescs[3] = {
+			D3D11_INPUT_ELEMENT_DESC inputElementDescs[4] = {
 				{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-				{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+				{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 }
 			};
 			V_RETURN(pd3dDevice->CreateInputLayout(inputElementDescs, _countof(inputElementDescs), g_vs_main, sizeof(g_vs_main), &InputLayout));
 			V_RETURN(pd3dDevice->CreateVertexShader(g_vs_main, sizeof(g_vs_main), nullptr, &BasicVS));

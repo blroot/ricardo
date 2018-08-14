@@ -114,8 +114,11 @@
     </Text>
   </ItemGroup>
   <ItemGroup>
-    <None Include="BasicShaders.hlsl">
+    <FxCompile Include="PixelShader.hlsl">
       <Filter>Source Files\Shaders\HLSL</Filter>
-    </None>
+    </FxCompile>
+    <FxCompile Include="VertexShader.hlsl">
+      <Filter>Source Files\Shaders\HLSL</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>
