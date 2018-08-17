@@ -3,6 +3,7 @@
 #include <iostream>
 
 using namespace ricardo;
+using namespace DirectX;
 
 ricardo::Scene::Scene()
 {
@@ -19,9 +20,14 @@ void ricardo::Scene::setGraphic_api(graphics_apis api)
 	this->graphic_api = api;
 }
 
-void ricardo::Scene::addObject(Object * object)
+void ricardo::Scene::addTriangle(Triangle * triangle)
 {
-	this->objects.push_back(object);
+	this->triangles.push_back(triangle);
+}
+
+void ricardo::Scene::addMesh(Mesh * mesh)
+{
+	this->meshes.push_back(mesh);
 }
 
 ricardo::graphics_apis& ricardo::Scene::getGraphicsAPI()
@@ -39,19 +45,19 @@ int & ricardo::Scene::getResolution_height()
 	return this->resolution_height;
 }
 
-std::vector<Object*>& ricardo::Scene::getObjects()
+std::vector<Triangle*>& ricardo::Scene::getTriangles()
 {
-	return this->objects;
+	return this->triangles;
+}
+
+std::vector<Mesh*>& ricardo::Scene::getMeshes()
+{
+	return this->meshes;
 }
 
 std::vector<WORD> ricardo::Scene::getIndices()
 {
 	return this->indices;
-}
-
-std::vector<InfoVertex> ricardo::Scene::getVertices()
-{
-	return this->vertices;
 }
 
 void ricardo::Scene::addIndex(WORD index)

@@ -16,9 +16,6 @@
     <Filter Include="Source Files\SceneReader">
       <UniqueIdentifier>{a1a90fea-fd61-4048-89dc-f3ed9d57efcc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Scene">
-      <UniqueIdentifier>{ab790d68-cfce-4b0f-8adf-e789d4e6f5fc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Object">
       <UniqueIdentifier>{cbb30985-bbdf-4b2f-b39f-e65b6a59d298}</UniqueIdentifier>
     </Filter>
@@ -37,6 +34,9 @@
     <Filter Include="Source Files\Shaders\HLSL">
       <UniqueIdentifier>{cdb7b4d2-976c-4274-b69b-7f7e01a10805}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Scene">
+      <UniqueIdentifier>{ab790d68-cfce-4b0f-8adf-e789d4e6f5fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -50,9 +50,6 @@
     </ClInclude>
     <ClInclude Include="Scene.h">
       <Filter>Source Files\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Object.h">
-      <Filter>Source Files\Object</Filter>
     </ClInclude>
     <ClInclude Include="mat3.h">
       <Filter>Source Files\Math</Filter>
@@ -72,13 +69,13 @@
     <ClInclude Include="Renderer.h">
       <Filter>Source Files\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="Mesh.h">
+      <Filter>Source Files\Object</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SceneReader.cpp">
       <Filter>Source Files\SceneReader</Filter>
-    </ClCompile>
-    <ClCompile Include="Object.cpp">
-      <Filter>Source Files\Object</Filter>
     </ClCompile>
     <ClCompile Include="Scene.cpp">
       <Filter>Source Files\Scene</Filter>
@@ -105,6 +102,9 @@
       <Filter>Source Files\Math</Filter>
     </ClCompile>
     <ClCompile Include="Triangle.cpp">
+      <Filter>Source Files\Object</Filter>
+    </ClCompile>
+    <ClCompile Include="Mesh.cpp">
       <Filter>Source Files\Object</Filter>
     </ClCompile>
   </ItemGroup>

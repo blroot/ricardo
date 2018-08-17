@@ -15,9 +15,9 @@ namespace ricardo {
 		Scene read();
 		virtual ~SceneReader();
 	private:
-		bool readvals(std::stringstream &s, const int numvals, float* values);
+		bool readvals(std::stringstream & s, const int float_numvals, float * values, const int str_numvals, std::string * stringvalues);
 		const char* file;
-		//color ambient;
+		vec4 ambient;
 		//color diffuse;
 		//color specular;
 		//color emission;

@@ -1,25 +1,26 @@
 #pragma once
 
-#include "Object.h"
 #include "vec3.h"
+#include "mat4.h"
 
 using namespace math;
 
 namespace ricardo {
 
-	class Triangle : public Object {
+	class Triangle {
 	public:
-		Triangle(vec3 A, vec3 B, vec3 C);
+		Triangle(vec3 indices);
 		virtual ~Triangle();
-		void applyTransform();
-		vec3 getNormal();
-		vec3& getA();
-		vec3& getC();
-		vec3& getB();
+		void setTransforms(mat4 transform);
+		//void setAmbient(vec4 color);
+		//vec4& getAmbient();
+		//vec3 getNormal();
+		vec3& getIndices();
+		mat4& getTransforms();
 	private:
-		vec3 normal;
-		vec3 A;
-		vec3 B;
-		vec3 C;
+		//vec3 normal;
+		vec3 indices;
+		//vec4 ambient;
+		mat4 transforms;
 	};
 }

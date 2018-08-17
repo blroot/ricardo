@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Scene.h"
+#include "Mesh.h"
 #include <iostream>
 #include "VertexShader.h"
 #include "PixelShader.h"
+#include <atlbase.h>
+#include <atlconv.h>
 
 using namespace DirectX;
 
@@ -19,8 +22,6 @@ namespace ricardo {
 	CDXUTDialog                 g_HUD;
 	CDXUTDialog                 g_SampleUI;
 	CFirstPersonCamera          g_Camera;
-	XMMATRIX                    g_mCenterMesh;
-	CDXUTSDKMesh                g_Mesh11;
 
 	struct ShaderTransforms {
 		XMMATRIX World;
@@ -66,6 +67,7 @@ namespace ricardo {
 		float RotationY = 0.0f;
 		ID3D11Device* pd3dDevice;
 		HRESULT hr;
+		std::vector<CDXUTSDKMesh*> loadedMeshes;
 
 		static void CALLBACK HandleFrameMove(double fTime, float fElapsedTime, void* pUserContext)
 		{
@@ -86,9 +88,6 @@ namespace ricardo {
 			pRender->reset();
 			V_RETURN(pRender->initialize(pd3dDevice));
 
-			// Load the mesh
-			V_RETURN(g_Mesh11.Create(pd3dDevice, L"tiny\\tiny.sdkmesh"));
-
 			auto pd3dImmediateContext = DXUTGetD3D11DeviceContext();
 			V_RETURN(g_DialogResourceManager.OnD3D11CreateDevice(pd3dDevice, pd3dImmediateContext));
 			V_RETURN(g_D3DSettingsDlg.OnD3D11CreateDevice(pd3dDevice));
@@ -102,11 +101,11 @@ namespace ricardo {
 			g_Camera.SetDrag(true);
 			g_Camera.SetEnableYAxisMovement(false);
 
-			//XMFLOAT3 vMin = XMFLOAT3(-55.0f, 0.0f, -55.0f);
-			//XMFLOAT3 vMax = XMFLOAT3(55.0f, 0.0f, 55.0f);
+			XMFLOAT3 vMin = XMFLOAT3(-110.0f, 0.0f, -110.0f);
+			XMFLOAT3 vMax = XMFLOAT3(110.0f, 0.0f, 110.0f);
 
 			// Set indoor scene boundaries - TODO: make configurable
-			//g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);
+			g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);
 
 			return hr;
 		};
@@ -157,17 +156,13 @@ namespace ricardo {
 			pRender->transforms.View = g_Camera.GetViewMatrix();
 
 			// Set the per object constant data
-			// We don't need World transform - set to identity for now
-			pRender->transforms.World = XMMatrixIdentity();
-
 			RECT r = DXUTGetWindowClientRect();
 
-			// Las matrices en constant buffers vienen column-major, por convencion.
-			pRender->transforms.World = XMMatrixTranspose(pRender->transforms.World);
+			// To column-major
 			pRender->transforms.View = XMMatrixTranspose(pRender->transforms.View);
 			pRender->transforms.Projection = XMMatrixTranspose(pRender->transforms.Projection);
-			pd3dImmediateContext->UpdateSubresource(pRender->CBuffer, 0, nullptr, &pRender->transforms, 0, 0);
 
+			// Draw each Triangle individually
 			D3D11_VIEWPORT viewports[1] = { 0, 0, (FLOAT)r.right, (FLOAT)r.bottom, 0.0f, 1.0f };
 			ID3D11RenderTargetView *rtvViews[1] = { rtv };
 			ID3D11Buffer *vertexBuffers[1] = { pRender->VertexBuffer };
@@ -182,33 +177,66 @@ namespace ricardo {
 			pd3dImmediateContext->RSSetViewports(1, viewports);
 			pd3dImmediateContext->PSSetShader(pRender->BasicPS, nullptr, 0);
 			pd3dImmediateContext->OMSetRenderTargets(1, rtvViews, nullptr);
-			pd3dImmediateContext->DrawIndexed(pRender->scene.indices.size(), 0, 0);
 
-			//Get the mesh
-			//IA setup
-			pd3dImmediateContext->IASetInputLayout(pRender->InputLayout);
-			UINT Strides[1];
-			UINT Offsets[1];
-			ID3D11Buffer* pVB[1];
-			pVB[0] = g_Mesh11.GetVB11(0, 0);
-			Strides[0] = (UINT)g_Mesh11.GetVertexStride(0, 0);
-			Offsets[0] = 0;
-			pd3dImmediateContext->IASetVertexBuffers(0, 1, pVB, Strides, Offsets);
-			pd3dImmediateContext->IASetIndexBuffer(g_Mesh11.GetIB11(0), g_Mesh11.GetIBFormat11(0), 0);
+			// Start at index 0
+			int indexOffset = 0;
 
-			for (UINT subset = 0; subset < g_Mesh11.GetNumSubsets(0); ++subset)
-			{
-				// Get the subset
-				auto pSubset = g_Mesh11.GetSubset(0, subset);
+			for (int i = 0; i < pRender->scene.getTriangles().size(); i++) {
 
-				auto PrimType = CDXUTSDKMesh::GetPrimitiveType11((SDKMESH_PRIMITIVE_TYPE)pSubset->PrimitiveType);
-				pd3dImmediateContext->IASetPrimitiveTopology(PrimType);
+				// Position the object with corresponding World transformation
+				mat4 transforms = pRender->scene.getTriangles()[i]->getTransforms();
+				pRender->transforms.World = XMMATRIX(transforms.elements[0], transforms.elements[1], transforms.elements[2], transforms.elements[3], 
+					transforms.elements[4], transforms.elements[5], transforms.elements[6], transforms.elements[7],
+					transforms.elements[8], transforms.elements[9], transforms.elements[10], transforms.elements[11],
+					transforms.elements[12], transforms.elements[13], transforms.elements[14], transforms.elements[15]);
+				pRender->transforms.World = XMMatrixTranspose(pRender->transforms.World);
 
-				// Ignores most of the material information in them mesh to use only a simple shader
-				auto pDiffuseRV = g_Mesh11.GetMaterial(pSubset->MaterialID)->pDiffuseRV11;
-				pd3dImmediateContext->PSSetShaderResources(0, 1, &pDiffuseRV);
+				pd3dImmediateContext->UpdateSubresource(pRender->CBuffer, 0, nullptr, &pRender->transforms, 0, 0);
+				pd3dImmediateContext->DrawIndexed(3, indexOffset, 0);
+				indexOffset = indexOffset + 3;
+			}
 
-				pd3dImmediateContext->DrawIndexed((UINT)pSubset->IndexCount, 0, (UINT)pSubset->VertexStart);
+
+			// Draw each Mesh individually
+			for (int i = 0; i < pRender->loadedMeshes.size(); i++) {
+
+				// Position the object with corresponding World transformation
+				mat4 transforms = pRender->scene.getMeshes()[i]->getTransforms();
+				pRender->transforms.World = XMMATRIX(transforms.elements[0], transforms.elements[1], transforms.elements[2], transforms.elements[3],
+					transforms.elements[4], transforms.elements[5], transforms.elements[6], transforms.elements[7],
+					transforms.elements[8], transforms.elements[9], transforms.elements[10], transforms.elements[11],
+					transforms.elements[12], transforms.elements[13], transforms.elements[14], transforms.elements[15]);
+				pRender->transforms.World = XMMatrixTranspose(pRender->transforms.World);
+
+				pd3dImmediateContext->UpdateSubresource(pRender->CBuffer, 0, nullptr, &pRender->transforms, 0, 0);
+
+				//Get the mesh
+				//IA setup
+				pd3dImmediateContext->IASetInputLayout(pRender->InputLayout);
+				UINT Strides[1];
+				UINT Offsets[1];
+				ID3D11Buffer* pVB[1];
+				pVB[0] = pRender->loadedMeshes[i]->GetVB11(0, 0);
+				Strides[0] = (UINT)pRender->loadedMeshes[i]->GetVertexStride(0, 0);
+				Offsets[0] = 0;
+				pd3dImmediateContext->IASetVertexBuffers(0, 1, pVB, Strides, Offsets);
+				pd3dImmediateContext->IASetIndexBuffer(pRender->loadedMeshes[i]->GetIB11(0), pRender->loadedMeshes[i]->GetIBFormat11(0), 0);
+
+				for (UINT subset = 0; subset < pRender->loadedMeshes[i]->GetNumSubsets(0); ++subset)
+				{
+			
+					// Get the subset
+					auto pSubset = pRender->loadedMeshes[i]->GetSubset(0, subset);
+
+					auto PrimType = CDXUTSDKMesh::GetPrimitiveType11((SDKMESH_PRIMITIVE_TYPE)pSubset->PrimitiveType);
+					pd3dImmediateContext->IASetPrimitiveTopology(PrimType);
+
+					// Ignores most of the material information in them mesh to use only a simple shader
+					auto pDiffuseRV = pRender->loadedMeshes[i]->GetMaterial(pSubset->MaterialID)->pDiffuseRV11;
+					pd3dImmediateContext->PSSetShaderResources(0, 1, &pDiffuseRV);
+
+					pd3dImmediateContext->DrawIndexed((UINT)pSubset->IndexCount, 0, (UINT)pSubset->VertexStart);
+				}
 			}
 
 			DXUT_BeginPerfEvent(DXUT_PERFEVENTCOLOR, L"HUD / Stats");
@@ -237,7 +265,13 @@ namespace ricardo {
 
 		static void CALLBACK HandleDestroyDevice(void* pUserContext)
 		{
-			g_Mesh11.Destroy();
+			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
+
+			// TODO: Currently no effect
+			for (int i = 0; i < pRender->loadedMeshes.size(); i++) {
+				pRender->loadedMeshes[i]->Destroy();
+			}
+
 			g_DialogResourceManager.OnD3D11DestroyDevice();
 			g_D3DSettingsDlg.OnD3D11DestroyDevice();
 			DXUTGetGlobalResourceCache().OnDestroyDevice();
@@ -258,7 +292,7 @@ namespace ricardo {
 			g_HUD.SetCallback(HandleGUIEvent);
 			int iY = 30;
 			int iYo = 26;
-			g_HUD.AddButton(IDC_TOGGLEFULLSCREEN, L"Toggle full screen", 0, iY, 170, 23);
+			//g_HUD.AddButton(IDC_TOGGLEFULLSCREEN, L"Toggle full screen", 0, iY, 170, 23);
 			g_SampleUI.SetCallback(HandleGUIEvent); iY = 10;
 		};
 
@@ -275,18 +309,30 @@ namespace ricardo {
 		HRESULT initialize(_In_ ID3D11Device* pd3dDevice) {
 			HRESULT hr = S_OK;
 
-			// Create vertex buffer
-			CD3D11_BUFFER_DESC vbDesc(scene.vertices.size() * sizeof(scene.vertices[0]), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
-			D3D11_SUBRESOURCE_DATA vbData = { scene.vertices.data(), 0, 0 };
-			V_RETURN(pd3dDevice->CreateBuffer(&vbDesc, &vbData, &VertexBuffer));
+			for (int i = 0; i < this->scene.getMeshes().size(); i++) {
+				std::cout << this->scene.getMeshes()[i]->getFilename() << std::endl;
+
+				CDXUTSDKMesh* newMesh = new CDXUTSDKMesh();
+				std::wstring filename = std::wstring(this->scene.getMeshes()[i]->getFilename().begin(), this->scene.getMeshes()[i]->getFilename().end());
+				V_RETURN(newMesh->Create(pd3dDevice, filename.c_str()));
+				newMesh->TransformBindPose(XMMatrixScaling(0.2f, 0.2f, 0.1f));
+				this->loadedMeshes.push_back(newMesh);
+			}
+
+			if (this->scene.getTriangles().size() != 0) {
+				// Create vertex buffer
+				CD3D11_BUFFER_DESC vbDesc(scene.vertices.size() * sizeof(scene.vertices[0]), D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_IMMUTABLE);
+				D3D11_SUBRESOURCE_DATA vbData = { scene.vertices.data(), 0, 0 };
+				V_RETURN(pd3dDevice->CreateBuffer(&vbDesc, &vbData, &VertexBuffer));
+
+				CD3D11_BUFFER_DESC ibDesc(scene.indices.size() * sizeof(scene.indices[0]), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT);
+				D3D11_SUBRESOURCE_DATA ibData = { scene.indices.data(), 0, 0 };
+				V_RETURN(pd3dDevice->CreateBuffer(&ibDesc, &ibData, &IndexBuffer));
+			}
 
 			// Create constant buffer
 			CD3D11_BUFFER_DESC cbDesc(sizeof(transforms), D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DEFAULT);
 			V_RETURN(pd3dDevice->CreateBuffer(&cbDesc, nullptr, &CBuffer));
-
-			CD3D11_BUFFER_DESC ibDesc(scene.indices.size() * sizeof(scene.indices[0]), D3D11_BIND_INDEX_BUFFER, D3D11_USAGE_DEFAULT);
-			D3D11_SUBRESOURCE_DATA ibData = { scene.indices.data(), 0, 0 };
-			V_RETURN(pd3dDevice->CreateBuffer(&ibDesc, &ibData, &IndexBuffer));
 
 			// LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
 			// UINT AlignedByteOffset; D3D11_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;

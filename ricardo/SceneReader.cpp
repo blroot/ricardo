@@ -30,7 +30,7 @@ ricardo::Scene ricardo::SceneReader::read()
 		// Initially push identity into transformation stack
 		transfstack.push(mat4(1.0f));
 
-		vec4 current_color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+		this->ambient = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
 		getline(infile, line);
 
@@ -41,14 +41,14 @@ ricardo::Scene ricardo::SceneReader::read()
 				&& (line[0] != '#')) {
 
 				float values[10];
-				std::string filename;
+				std::string stringvalues[10];
 				bool valid_input;
 
 				stringstream s(line);
 				s >> command;
 
 				if (command == "mode") {
-					valid_input = this->readvals(s, 2, values);
+					valid_input = this->readvals(s, 2, values, 0, nullptr);
 
 					if (valid_input) {
 
@@ -60,35 +60,37 @@ ricardo::Scene ricardo::SceneReader::read()
 					}
 				}
 				else if (command == "vertex") {
-					valid_input = this->readvals(s, 3, values);
+					valid_input = this->readvals(s, 3, values, 0, nullptr);
 
 					if (valid_input) {
 
-						vec3 vertex = transfstack.top() * vec4(values[0], values[1], values[2], 1.0f);
-						scene.addVertex(vertex, current_color);
+						//vec3 vertex = transfstack.top() * vec4(values[0], values[1], values[2], 1.0f);
+						vec3 vertex = vec3(values[0], values[1], values[2]);
+						//this->vertex_buffer.push_back(vertex);
+						scene.addVertex(vertex, this->ambient);
 						std::cout << "Adding vertex to buffer with coordinates: " << vertex << std::endl;
 					}
 				} 
 				else if (command == "tri") {
-					valid_input = this->readvals(s, 3, values);
+					valid_input = this->readvals(s, 3, values, 0, nullptr);
 
 					if (valid_input) {
 
-						//Triangle *triangle = new Triangle(vertex_buffer[values[0]], vertex_buffer[values[1]], vertex_buffer[values[2]]);
+						Triangle *triangle = new Triangle(vec3(values[0], values[1], values[2]));
 						
 						// Pushing indices to Scene index vector
 						scene.addIndex(values[0]);
 						scene.addIndex(values[1]);
 						scene.addIndex(values[2]);
 
-						//triangle->getMaterials().setAmbient(this->ambient);
+						//triangle->setAmbient(this->ambient);
 						//triangle->getMaterials().setDiffuse(this->diffuse);
 						//triangle->getMaterials().setSpecular(this->specular);
 						//triangle->getMaterials().setShininess(this->shininess);
 						//triangle->getMaterials().setEmission(this->emission);
-						//triangle->setTransform(transfstack.top());
+						triangle->setTransforms(transfstack.top());
 						//triangle->applyTransform();
-						//scene.addObject(triangle);
+						scene.addTriangle(triangle);
 
 						//std::cout << "Adding triangle to scene with vertices: " << vertex_buffer[values[0]]
 						//	<< " " << vertex_buffer[values[1]] << " " << vertex_buffer[values[2]] << std::endl;
@@ -121,7 +123,7 @@ ricardo::Scene ricardo::SceneReader::read()
 				}
 				else if (command == "translate") {
 
-					valid_input = this->readvals(s, 3, values);
+					valid_input = this->readvals(s, 3, values, 0, nullptr);
 
 					if (valid_input) {
 
@@ -135,7 +137,7 @@ ricardo::Scene ricardo::SceneReader::read()
 				}
 				else if (command == "scale") {
 
-					valid_input = this->readvals(s, 3, values);
+					valid_input = this->readvals(s, 3, values, 0, nullptr);
 
 					if (valid_input) {
 
@@ -149,7 +151,7 @@ ricardo::Scene ricardo::SceneReader::read()
 				}
 				else if (command == "rotate") {
 
-					valid_input = this->readvals(s, 4, values);
+					valid_input = this->readvals(s, 4, values, 0, nullptr);
 
 					if (valid_input) {
 
@@ -163,17 +165,41 @@ ricardo::Scene ricardo::SceneReader::read()
 					}
 
 				}
-				else if (command == "color") {
+				else if (command == "ambient") {
 
-					valid_input = this->readvals(s, 4, values);
+					valid_input = this->readvals(s, 4, values, 0, nullptr);
 
 					if (valid_input) {
 
-						current_color = vec4(values[0], values[1], values[2], values[3]);
-						std::cout << "Color -> " << current_color << std::endl;
+						this->ambient = vec4(values[0], values[1], values[2], values[3]);
+						std::cout << "Material: Ambient -> " << this->ambient << std::endl;
 					}
 
 				}
+				else if (command == "sdkmesh") {
+
+					//valid_input = this->readvals(s, 4, values, 1, stringvalues);
+
+					//if (valid_input) {
+
+					//	vec4 center = vec4(values[0], values[1], values[2], 0.0f);
+					//	std::cout << "Loading mesh: Center -> " << center << " File -> " << stringvalues << std::endl;
+
+					//	for (int i = 0; i < 10; i++) {
+					//		std::cout << " File -> " << stringvalues[i] << std::endl;
+					//	}
+
+					s >> values[0] >> values[1] >> values[2] >> stringvalues[0];
+
+					vec3 center = vec3(values[0], values[1], values[2]);
+					Mesh *mesh = new Mesh(center, stringvalues[0]);
+					mesh->setTransforms(transfstack.top());
+					scene.addMesh(mesh);
+
+					std::cout << "Loading mesh: Center -> " << center << " File -> " << stringvalues[0] << std::endl;
+
+				}
+
 				std::cout << "==================================" << std::endl;
 			}
 			// Get next line
@@ -191,11 +217,12 @@ ricardo::SceneReader::~SceneReader()
 {
 }
 
-bool ricardo::SceneReader::readvals(std::stringstream & s, const int numvals, float * values)
+bool ricardo::SceneReader::readvals(std::stringstream & s, const int float_numvals, float * values, const int str_numvals, std::string * stringvalues)
 {
-	for (int i = 0; i < numvals; i++) {
-		s >> values[i];
+	for (int i = 0; i < float_numvals + str_numvals; i++) {
 
+		s >> values[i];
+		
 		if (s.fail()) {
 			cout << "Failed reading value " << i << " will skip\n";
 			return false;
