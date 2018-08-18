@@ -148,8 +148,10 @@ namespace ricardo {
 
 			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
 			ID3D11RenderTargetView *rtv = DXUTGetD3D11RenderTargetView();
-
+			ID3D11DepthStencilView *dsv = DXUTGetD3D11DepthStencilView();
+			
 			pd3dImmediateContext->ClearRenderTargetView(rtv, DirectX::Colors::DarkSlateBlue);
+			pd3dImmediateContext->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0, 0);
 
 			// Get the projection & view matrix from the camera class
 			pRender->transforms.Projection = g_Camera.GetProjMatrix();
@@ -176,7 +178,7 @@ namespace ricardo {
 			pd3dImmediateContext->VSSetConstantBuffers(0, 1, &pRender->CBuffer.p);
 			pd3dImmediateContext->RSSetViewports(1, viewports);
 			pd3dImmediateContext->PSSetShader(pRender->BasicPS, nullptr, 0);
-			pd3dImmediateContext->OMSetRenderTargets(1, rtvViews, nullptr);
+			pd3dImmediateContext->OMSetRenderTargets(1, rtvViews, dsv);
 
 			// Start at index 0
 			int indexOffset = 0;
@@ -310,12 +312,9 @@ namespace ricardo {
 			HRESULT hr = S_OK;
 
 			for (int i = 0; i < this->scene.getMeshes().size(); i++) {
-				std::cout << this->scene.getMeshes()[i]->getFilename() << std::endl;
-
 				CDXUTSDKMesh* newMesh = new CDXUTSDKMesh();
 				std::wstring filename = std::wstring(this->scene.getMeshes()[i]->getFilename().begin(), this->scene.getMeshes()[i]->getFilename().end());
 				V_RETURN(newMesh->Create(pd3dDevice, filename.c_str()));
-				newMesh->TransformBindPose(XMMatrixScaling(0.2f, 0.2f, 0.1f));
 				this->loadedMeshes.push_back(newMesh);
 			}
 

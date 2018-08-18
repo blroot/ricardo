@@ -31,20 +31,20 @@ tri 5 4 6
 tri 6 4 7
 popTransform
 pushTransform
-translate 0.0 -15.0 0.0
+translate 0.0 0.0 0.0
 rotate 1.0 0.0 0.0 -90
 scale 0.1 0.1 0.1
 sdkmesh 0.0 0.0 1.0 tiny\\tiny.sdkmesh
 popTransform
 pushTransform
-translate 50.0 -15.0 50.0
+translate 50.0 0.0 50.0
 rotate 1.0 0.0 0.0 -90
 rotate 0.0 0.0 1.0 150
 scale 0.1 0.1 0.1
 sdkmesh 0.0 0.0 1.0 tiny\\tiny.sdkmesh
 popTransform
 pushTransform
-translate -50.0 -45.0 -50.0
+translate -50.0 -35.0 -50.0
 scale 0.1 0.1 0.1
 sdkmesh 0.0 0.0 1.0 trees\\tree.sdkmesh
 popTransform
