@@ -32,6 +32,9 @@ ricardo::Scene ricardo::SceneReader::read()
 
 		this->ambient = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 
+		// Defaults to 800x600
+		scene.setResolution(800, 600);
+
 		getline(infile, line);
 
 		while (infile) {
@@ -40,7 +43,7 @@ ricardo::Scene ricardo::SceneReader::read()
 			if ((line.find_first_not_of(" \t\r\n") != string::npos)
 				&& (line[0] != '#')) {
 
-				float values[10];
+				float values[14];
 				std::string stringvalues[10];
 				bool valid_input;
 
@@ -58,6 +61,28 @@ ricardo::Scene ricardo::SceneReader::read()
 						scene.setGraphic_api(graphics_apis::DirectX11);
 						std::cout << "Setting graphics API to : " << "DirectX11" << std::endl;
 					}
+				}
+				else if (command == "camera") {
+
+					valid_input = this->readvals(s, 14, values, 0, nullptr);
+
+					if (valid_input) {
+
+						vec3 eye = vec3(values[0], values[1], values[2]);
+						vec3 lookAt = vec3(values[3], values[4], values[5]);
+						vec3 vMin = vec3(values[8], values[9], values[10]);
+						vec3 vMax = vec3(values[11], values[12], values[13]);
+
+						scene.setCameraEye(eye);
+						scene.setCameraLookAt(lookAt);
+						scene.setCameraRotationScaler(values[6]);
+						scene.setCameraMoveScaler(values[7]);
+						scene.setCameraVMin(vMin);
+						scene.setCameraVMax(vMax);
+
+						std::cout << "Setting camera coordinates: eye " << eye << " look at " << lookAt << std::endl;
+					}
+
 				}
 				else if (command == "vertex") {
 					valid_input = this->readvals(s, 3, values, 0, nullptr);

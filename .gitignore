@@ -259,3 +259,6 @@ paket-files/
 # Python Tools for Visual Studio (PTVS)
 __pycache__/
 *.pyc
+ricardo/Media/desk/TABLE.sdkmesh
+ricardo/Media/lamp/eb_lamp_01.sdkmesh
+ricardo/Media/Z3_OBJ.sdkmesh

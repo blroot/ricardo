@@ -94,15 +94,16 @@ namespace ricardo {
 			g_pTxtHelper = new CDXUTTextHelper(pd3dDevice, pd3dImmediateContext, &g_DialogResourceManager, 15);
 
 			// Setup the camera's view parameters
-			static const XMVECTORF32 s_vecEye = { 0.0f, 0.0f, -100.0f, 0.0f };
-			g_Camera.SetViewParams(s_vecEye, g_XMZero);
+			static const XMVECTORF32 s_vecEye = { pRender->scene.getCameraEye().x, pRender->scene.getCameraEye().y, pRender->scene.getCameraEye().z, 0.0f };
+			static const XMVECTORF32 s_vecLookAt = { pRender->scene.getCameraLookAt().x, pRender->scene.getCameraEye().y, pRender->scene.getCameraEye().z, 0.0f };
+			g_Camera.SetViewParams(s_vecEye, s_vecLookAt);
 			g_Camera.SetRotateButtons(TRUE, FALSE, FALSE);
-			g_Camera.SetScalers(0.01f, 100.0f);
+			g_Camera.SetScalers(pRender->scene.getCameraRotationScaler(), pRender->scene.getCameraMoveScaler());
 			g_Camera.SetDrag(true);
 			g_Camera.SetEnableYAxisMovement(false);
 
-			XMFLOAT3 vMin = XMFLOAT3(-110.0f, 0.0f, -110.0f);
-			XMFLOAT3 vMax = XMFLOAT3(110.0f, 0.0f, 110.0f);
+			XMFLOAT3 vMin = XMFLOAT3(pRender->scene.getCameraVMin().x, pRender->scene.getCameraVMin().y, pRender->scene.getCameraVMin().z);
+			XMFLOAT3 vMax = XMFLOAT3(pRender->scene.getCameraVMax().x, pRender->scene.getCameraVMax().y, pRender->scene.getCameraVMax().z);
 
 			// Set indoor scene boundaries - TODO: make configurable
 			g_Camera.SetClipToBoundary(TRUE, &vMin, &vMax);

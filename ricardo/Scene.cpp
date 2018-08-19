@@ -70,3 +70,63 @@ void ricardo::Scene::addVertex(vec3 vertex, vec4 color)
 	InfoVertex arr = { vertex, color };
 	this->vertices.push_back(arr);
 }
+
+void ricardo::Scene::setCameraEye(vec3 eye)
+{
+	this->cameraEye = eye;
+}
+
+void ricardo::Scene::setCameraLookAt(vec3 lookAt)
+{
+	this->cameraLookAt = lookAt;
+}
+
+void ricardo::Scene::setCameraRotationScaler(float rotationScaler)
+{
+	this->cameraRotationScaler = rotationScaler;
+}
+
+void ricardo::Scene::setCameraMoveScaler(float moveScaler)
+{
+	this->cameraMoveScaler = moveScaler;
+}
+
+void ricardo::Scene::setCameraVMin(vec3 vMin)
+{
+	this->cameraVMin = vMin;
+}
+
+void ricardo::Scene::setCameraVMax(vec3 vMax)
+{
+	this->cameraVMax = vMax;
+}
+
+vec3 & ricardo::Scene::getCameraEye()
+{
+	return this->cameraEye;
+}
+
+vec3 & ricardo::Scene::getCameraLookAt()
+{
+	return this->cameraLookAt;
+}
+
+float & ricardo::Scene::getCameraRotationScaler()
+{
+	return this->cameraRotationScaler;
+}
+
+float & ricardo::Scene::getCameraMoveScaler()
+{
+	return this->cameraMoveScaler;
+}
+
+vec3 & ricardo::Scene::getCameraVMin()
+{
+	return this->cameraVMin;
+}
+
+vec3 & ricardo::Scene::getCameraVMax()
+{
+	return this->cameraVMax;
+}
