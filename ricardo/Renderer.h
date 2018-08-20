@@ -23,6 +23,24 @@ namespace ricardo {
 	CDXUTDialog                 g_SampleUI;
 	CFirstPersonCamera          g_Camera;
 
+	struct CollisionBox
+	{
+		BoundingOrientedBox obox;
+		ContainmentType collision;
+	};
+
+	struct CollisionAABox
+	{
+		BoundingBox aabox;
+		ContainmentType collision;
+	};
+
+	// Primary collision objects
+	BoundingBox g_PrimaryAABox;
+
+	// Secondary collision objects
+	CollisionBox        g_SecondaryOrientedBoxes[1];
+
 	struct ShaderTransforms {
 		XMMATRIX World;
 		XMMATRIX View;
@@ -164,6 +182,13 @@ namespace ricardo {
 			// To column-major
 			pRender->transforms.View = XMMatrixTranspose(pRender->transforms.View);
 			pRender->transforms.Projection = XMMatrixTranspose(pRender->transforms.Projection);
+
+			// Compute intersections
+			// Primary AA Box center is tied to camera eye
+			XMStoreFloat3(&g_PrimaryAABox.Center, g_Camera.GetEyePt());
+			g_SecondaryOrientedBoxes[0].collision = g_PrimaryAABox.Contains(g_SecondaryOrientedBoxes[0].obox);
+
+			std::cout << g_SecondaryOrientedBoxes[0].collision << std::endl;
 
 			// Draw each Triangle individually
 			D3D11_VIEWPORT viewports[1] = { 0, 0, (FLOAT)r.right, (FLOAT)r.bottom, 0.0f, 1.0f };
@@ -333,6 +358,19 @@ namespace ricardo {
 			// Create constant buffer
 			CD3D11_BUFFER_DESC cbDesc(sizeof(transforms), D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DEFAULT);
 			V_RETURN(pd3dDevice->CreateBuffer(&cbDesc, nullptr, &CBuffer));
+
+			// Set up the primary axis aligned box
+			g_PrimaryAABox.Center = XMFLOAT3(0, 0, 0);
+			g_PrimaryAABox.Extents = XMFLOAT3(1, 30, 1);
+
+			// Initialize all of the secondary objects with default values
+			for (UINT i = 0; i < 1; i++)
+			{
+				g_SecondaryOrientedBoxes[i].obox.Center = XMFLOAT3(0, 0, 0);
+				g_SecondaryOrientedBoxes[i].obox.Extents = XMFLOAT3(5.0f, 10.0f, 10.0f);
+				g_SecondaryOrientedBoxes[i].obox.Orientation = XMFLOAT4(0, 1, 0, 0);
+				g_SecondaryOrientedBoxes[i].collision = DISJOINT;
+			}
 
 			// LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
 			// UINT AlignedByteOffset; D3D11_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
