@@ -7,6 +7,7 @@
 #include "PixelShader.h"
 #include <atlbase.h>
 #include <atlconv.h>
+#include "Camera.h"
 
 using namespace DirectX;
 
@@ -21,7 +22,7 @@ namespace ricardo {
 	CD3DSettingsDlg             g_D3DSettingsDlg;
 	CDXUTDialog                 g_HUD;
 	CDXUTDialog                 g_SampleUI;
-	CFirstPersonCamera          g_Camera;
+	RicardoFPSCamera            g_Camera;
 
 	struct CollisionBox
 	{
@@ -86,9 +87,33 @@ namespace ricardo {
 		ID3D11Device* pd3dDevice;
 		HRESULT hr;
 		std::vector<CDXUTSDKMesh*> loadedMeshes;
+		XMFLOAT3 cameraLastDirectionMovement;
+		XMFLOAT3 cameraLastVelocity;
 
 		static void CALLBACK HandleFrameMove(double fTime, float fElapsedTime, void* pUserContext)
 		{
+			DX11Handler *pRender = static_cast<DX11Handler *>(pUserContext);
+
+			// Compute intersections
+			// Primary AA Box center is tied to camera eye
+			XMStoreFloat3(&g_PrimaryAABox.Center, g_Camera.GetEyePt());
+			g_SecondaryOrientedBoxes[0].collision = g_PrimaryAABox.Contains(g_SecondaryOrientedBoxes[0].obox);
+
+			if (g_Camera.GetDir().x != 0.0f || g_Camera.GetDir().y != 0.0f || g_Camera.GetDir().z != 0.0f) {
+				pRender->cameraLastDirectionMovement = g_Camera.GetDir();
+			}
+
+			if (g_Camera.GetVelocity().x != 0.0f || g_Camera.GetVelocity().y != 0.0f || g_Camera.GetVelocity().z != 0.0f) {
+				pRender->cameraLastVelocity = g_Camera.GetVelocity();
+			}
+
+			g_Camera.SetEnablePositionMovement(TRUE);
+
+			if (g_SecondaryOrientedBoxes[0].collision) {
+				g_Camera.SetEnablePositionMovement(FALSE);
+				g_Camera.SetVelocity(XMFLOAT3(pRender->cameraLastDirectionMovement.x * -5.0f, pRender->cameraLastDirectionMovement.y * -5.0f, pRender->cameraLastDirectionMovement.z * -5.0f));
+			}
+
 			// Update the camera's position based on user input 
 			g_Camera.FrameMove(fElapsedTime);
 		};
@@ -182,14 +207,7 @@ namespace ricardo {
 			// To column-major
 			pRender->transforms.View = XMMatrixTranspose(pRender->transforms.View);
 			pRender->transforms.Projection = XMMatrixTranspose(pRender->transforms.Projection);
-
-			// Compute intersections
-			// Primary AA Box center is tied to camera eye
-			XMStoreFloat3(&g_PrimaryAABox.Center, g_Camera.GetEyePt());
-			g_SecondaryOrientedBoxes[0].collision = g_PrimaryAABox.Contains(g_SecondaryOrientedBoxes[0].obox);
-
-			std::cout << g_SecondaryOrientedBoxes[0].collision << std::endl;
-
+	
 			// Draw each Triangle individually
 			D3D11_VIEWPORT viewports[1] = { 0, 0, (FLOAT)r.right, (FLOAT)r.bottom, 0.0f, 1.0f };
 			ID3D11RenderTargetView *rtvViews[1] = { rtv };
@@ -359,6 +377,7 @@ namespace ricardo {
 			CD3D11_BUFFER_DESC cbDesc(sizeof(transforms), D3D11_BIND_CONSTANT_BUFFER, D3D11_USAGE_DEFAULT);
 			V_RETURN(pd3dDevice->CreateBuffer(&cbDesc, nullptr, &CBuffer));
 
+			// Set bounding boxes - TODO: make configurable
 			// Set up the primary axis aligned box
 			g_PrimaryAABox.Center = XMFLOAT3(0, 0, 0);
 			g_PrimaryAABox.Extents = XMFLOAT3(1, 30, 1);
